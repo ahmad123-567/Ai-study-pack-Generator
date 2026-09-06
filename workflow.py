@@ -12,7 +12,7 @@ import anthropic
 
 from prompts import prompt_outline, prompt_flashcards, prompt_quiz, prompt_plan
 
-MODEL = "openai/gpt-oss-120b"  # good balance of quality/cost/speed
+MODEL = "claude-sonnet-4-5"  # good balance of quality/cost/speed
 MAX_RETRIES = 2
 
 
@@ -40,6 +40,10 @@ def call_claude(client: anthropic.Anthropic, prompt: str, max_tokens: int = 2500
             )
             raw_text = "".join(block.text for block in response.content if block.type == "text")
             return extract_json(raw_text)
+        except anthropic.AuthenticationError:
+            # Invalid/expired API key — retrying won't help, so fail fast
+            # and let the caller show a clear "check your key" message.
+            raise
         except json.JSONDecodeError as e:
             last_err = e
             time.sleep(1)
