@@ -36,7 +36,7 @@ if "study_pack" not in st.session_state:
 with st.sidebar:
     st.title("⚙️ Settings")
     api_key = st.text_input(
-        "AQ.Ab8RN6LHMYzIsjncbbfS0ahucXDY-HOwmjMyM7cMWXh_Y6CvXg",
+        "Anthropic API Key",
         type="password",
         help="Get a key at https://console.anthropic.com/. It is only used for this session and never stored.",
     )
