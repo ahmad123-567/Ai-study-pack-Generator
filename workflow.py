@@ -12,7 +12,7 @@ import anthropic
 
 from prompts import prompt_outline, prompt_flashcards, prompt_quiz, prompt_plan
 
-MODEL = "claude-sonnet-4-5"  # good balance of quality/cost/speed
+MODEL = "openai/gpt-oss-120b"  # good balance of quality/cost/speed
 MAX_RETRIES = 2
 
 
