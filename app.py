@@ -8,7 +8,7 @@ layout, inputs, session state, and rendering results.
 import json
 from datetime import datetime
 
-import anthropic
+import groq
 import streamlit as st
 
 from workflow import run_workflow
@@ -36,9 +36,9 @@ if "study_pack" not in st.session_state:
 with st.sidebar:
     st.title("⚙️ Settings")
     api_key = st.text_input(
-        "Anthropic API Key",
+        "Groq API Key",
         type="password",
-        help="Get a key at https://console.anthropic.com/. It is only used for this session and never stored.",
+        help="Get a FREE key at https://console.groq.com/keys — no credit card required. It is only used for this session and never stored.",
     )
     st.markdown("---")
     st.subheader("Study Pack Options")
@@ -109,12 +109,12 @@ generate_btn = st.button("✨ Generate Study Pack", type="primary", use_containe
 # ----------------------------
 if generate_btn:
     if not api_key:
-        st.error("Please enter your Anthropic API key in the sidebar.")
+        st.error("Please enter your Groq API key in the sidebar (get a free one at console.groq.com/keys).")
     elif not topic.strip() and not source_text.strip():
         st.error("Please enter a topic or provide some notes/text first.")
     else:
         try:
-            client = anthropic.Anthropic(api_key=api_key)
+            client = groq.Groq(api_key=api_key)
             with st.status("Starting AI workflow...", expanded=True) as status:
                 data = run_workflow(
                     client=client,
@@ -138,8 +138,10 @@ if generate_btn:
                 },
             )
             st.success("Study pack ready!")
-        except anthropic.AuthenticationError:
+        except groq.AuthenticationError:
             st.error("Invalid API key. Please check your key and try again.")
+        except groq.RateLimitError:
+            st.error("Free tier rate limit hit. Please wait a minute and try again.")
         except RuntimeError as e:
             st.error(f"The AI workflow failed: {e}")
         except Exception as e:
