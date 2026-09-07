@@ -19,7 +19,11 @@ from google.genai import errors as genai_errors
 
 from prompts import prompt_outline, prompt_flashcards, prompt_quiz, prompt_plan
 
-MODEL = "gemini-3.6-flash"  # free, fast, strong general-purpose model
+MODEL_CANDIDATES = [
+    "gemini-3.6-flash",   # current recommended free-tier model (per Google's latest guidance)
+    "gemini-flash-latest",  # generic alias Google keeps pointed at their current flash model
+    "gemini-2.5-flash",   # fallback if the above aren't available on your account
+]
 MAX_RETRIES = 2
 
 
@@ -36,29 +40,31 @@ def extract_json(text: str) -> dict:
 
 def call_ai(api_key: str, prompt: str) -> dict:
     """Calls the free Gemini API and parses the JSON response, retrying on
-    transient failures (bad JSON, rate limits). Fails fast on auth errors
-    since retrying those won't help."""
+    transient failures (bad JSON, rate limits), and falling back to the next
+    candidate model if the current one is unavailable (404)."""
     client = genai.Client(api_key=api_key)
 
     last_err = None
-    for _ in range(MAX_RETRIES + 1):
-        try:
-            response = client.models.generate_content(model=MODEL, contents=prompt)
-            return extract_json(response.text)
-        except genai_errors.ClientError as e:
-            # HTTP status codes: 401/403 = bad key or no permission (fail fast),
-            # 429 = rate limit (worth a short wait), others = retry briefly.
-            if e.code in (401, 403):
-                raise
-            last_err = e
-            time.sleep(5 if e.code == 429 else 1.5)
-        except json.JSONDecodeError as e:
-            last_err = e
-            time.sleep(1)
-        except genai_errors.ServerError as e:
-            last_err = e
-            time.sleep(1.5)
-    raise RuntimeError(f"Failed after {MAX_RETRIES + 1} attempts: {last_err}")
+    for model_name in MODEL_CANDIDATES:
+        for _ in range(MAX_RETRIES + 1):
+            try:
+                response = client.models.generate_content(model=model_name, contents=prompt)
+                return extract_json(response.text)
+            except genai_errors.ClientError as e:
+                if e.code in (401, 403):
+                    raise  # bad key / no permission — retrying or switching models won't help
+                if e.code == 404:
+                    last_err = e
+                    break  # this model isn't available — try the next candidate
+                last_err = e
+                time.sleep(5 if e.code == 429 else 1.5)
+            except json.JSONDecodeError as e:
+                last_err = e
+                time.sleep(1)
+            except genai_errors.ServerError as e:
+                last_err = e
+                time.sleep(1.5)
+    raise RuntimeError(f"Failed after trying all models: {last_err}")
 
 
 def run_workflow(
