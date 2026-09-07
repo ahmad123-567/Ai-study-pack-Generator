@@ -19,7 +19,7 @@ from google.genai import errors as genai_errors
 
 from prompts import prompt_outline, prompt_flashcards, prompt_quiz, prompt_plan
 
-MODEL = "gemini-2.0-flash"  # free, fast, strong general-purpose model
+MODEL = "gemini-3.6-flash"  # free, fast, strong general-purpose model
 MAX_RETRIES = 2
 
 
