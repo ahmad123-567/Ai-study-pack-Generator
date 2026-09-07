@@ -8,7 +8,7 @@ layout, inputs, session state, and rendering results.
 import json
 from datetime import datetime
 
-import groq
+from google.genai import errors as genai_errors
 import streamlit as st
 
 from workflow import run_workflow
@@ -36,9 +36,9 @@ if "study_pack" not in st.session_state:
 with st.sidebar:
     st.title("⚙️ Settings")
     api_key = st.text_input(
-        "Groq API Key",
+        "Gemini API Key",
         type="password",
-        help="Get a FREE key at https://console.groq.com/keys — no credit card required. It is only used for this session and never stored.",
+        help="Get a FREE key at https://aistudio.google.com/apikey — no credit card required. It is only used for this session and never stored.",
     )
     st.markdown("---")
     st.subheader("Study Pack Options")
@@ -109,15 +109,14 @@ generate_btn = st.button("✨ Generate Study Pack", type="primary", use_containe
 # ----------------------------
 if generate_btn:
     if not api_key:
-        st.error("Please enter your Groq API key in the sidebar (get a free one at console.groq.com/keys).")
+        st.error("Please enter your Gemini API key in the sidebar (get a free one at aistudio.google.com/apikey).")
     elif not topic.strip() and not source_text.strip():
         st.error("Please enter a topic or provide some notes/text first.")
     else:
         try:
-            client = groq.Groq(api_key=api_key)
             with st.status("Starting AI workflow...", expanded=True) as status:
                 data = run_workflow(
-                    client=client,
+                    api_key=api_key,
                     status=status,
                     topic=topic,
                     source_text=source_text,
@@ -138,10 +137,13 @@ if generate_btn:
                 },
             )
             st.success("Study pack ready!")
-        except groq.AuthenticationError:
-            st.error("Invalid API key. Please check your key and try again.")
-        except groq.RateLimitError:
-            st.error("Free tier rate limit hit. Please wait a minute and try again.")
+        except genai_errors.ClientError as e:
+            if e.code in (401, 403):
+                st.error("Invalid API key. Please check your key and try again.")
+            elif e.code == 429:
+                st.error("Free tier rate limit hit. Please wait a minute and try again.")
+            else:
+                st.error(f"Request error: {e}")
         except RuntimeError as e:
             st.error(f"The AI workflow failed: {e}")
         except Exception as e:
